@@ -14,7 +14,7 @@ import org.fossify.messages.interfaces.MessageAttachmentsDao
 import org.fossify.messages.interfaces.MessagesDao
 import org.fossify.messages.models.*
 
-@Database(entities = [Conversation::class, Attachment::class, MessageAttachment::class, Message::class, RecycleBinMessage::class], version = 8)
+@Database(entities = [Conversation::class, Attachment::class, MessageAttachment::class, Message::class, RecycleBinMessage::class], version = 9)
 @TypeConverters(Converters::class)
 abstract class MessagesDatabase : RoomDatabase() {
 
@@ -120,6 +120,14 @@ abstract class MessagesDatabase : RoomDatabase() {
                     execSQL("ALTER TABLE conversations ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
                     execSQL("CREATE TABLE IF NOT EXISTS `recycle_bin_messages` (`id` INTEGER NOT NULL PRIMARY KEY, `deleted_ts` INTEGER NOT NULL)")
                     execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_recycle_bin_messages_id` ON `recycle_bin_messages` (`id`)")
+                }
+            }
+        }
+
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.apply {
+                    execSQL("ALTER TABLE conversations ADD COLUMN blocked INTEGER NOT NULL DEFAULT 0")
                 }
             }
         }

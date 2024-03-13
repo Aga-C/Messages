@@ -87,19 +87,6 @@ fun Context.getMessages(
     var messages = ArrayList<Message>()
     queryCursor(uri, projection, selection, selectionArgs, sortOrder, showErrors = true) { cursor ->
         val senderNumber = cursor.getStringValue(Sms.ADDRESS) ?: return@queryCursor
-
-        val isNumberBlocked = if (blockStatus.containsKey(senderNumber)) {
-            blockStatus[senderNumber]!!
-        } else {
-            val isBlocked = isNumberBlocked(senderNumber, blockedNumbers)
-            blockStatus[senderNumber] = isBlocked
-            isBlocked
-        }
-
-        if (isNumberBlocked) {
-            return@queryCursor
-        }
-
         val id = cursor.getLongValue(Sms._ID)
         val body = cursor.getStringValue(Sms.BODY)
         val type = cursor.getIntValue(Sms.TYPE)
@@ -306,17 +293,17 @@ fun Context.getConversations(threadId: Long? = null, privateContacts: ArrayList<
             val rawIds = cursor.getStringValue(Threads.RECIPIENT_IDS)
             val recipientIds = rawIds.split(" ").filter { it.areDigitsOnly() }.map { it.toInt() }.toMutableList()
             val phoneNumbers = getThreadPhoneNumbers(recipientIds)
-            if (phoneNumbers.isEmpty() || phoneNumbers.any { isNumberBlocked(it, blockedNumbers) }) {
+            if (phoneNumbers.isEmpty()) {
                 return@queryCursorUnsafe
             }
-
             val names = getThreadContactNames(phoneNumbers, privateContacts)
             val title = TextUtils.join(", ", names.toTypedArray())
             val photoUri = if (phoneNumbers.size == 1) simpleContactHelper.getPhotoUriFromPhoneNumber(phoneNumbers.first()) else ""
             val isGroupConversation = phoneNumbers.size > 1
             val read = cursor.getIntValue(Threads.READ) == 1
             val archived = if (archiveAvailable) cursor.getIntValue(Threads.ARCHIVED) == 1 else false
-            val conversation = Conversation(id, snippet, date.toInt(), read, title, photoUri, isGroupConversation, phoneNumbers.first(), isArchived = archived)
+            val blocked = phoneNumbers.any { isNumberBlocked(it, blockedNumbers) }
+            val conversation = Conversation(id, snippet, date.toInt(), read, title, photoUri, isGroupConversation, phoneNumbers.first(), isArchived = archived, isBlocked = blocked)
             conversations.add(conversation)
         }
     } catch (sqliteException: SQLiteException) {

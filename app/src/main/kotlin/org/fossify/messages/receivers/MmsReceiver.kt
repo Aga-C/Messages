@@ -16,12 +16,6 @@ import org.fossify.messages.helpers.refreshMessages
 
 // more info at https://github.com/klinker41/android-smsmms
 class MmsReceiver : MmsReceivedReceiver() {
-
-    override fun isAddressBlocked(context: Context, address: String): Boolean {
-        val normalizedAddress = address.normalizePhoneNumber()
-        return context.isNumberBlocked(normalizedAddress)
-    }
-
     override fun onMessageReceived(context: Context, messageUri: Uri) {
         val mms = context.getLatestMMS() ?: return
         val address = mms.getSender()?.phoneNumbers?.first()?.normalizedNumber ?: ""
@@ -40,7 +34,9 @@ class MmsReceiver : MmsReceivedReceiver() {
             }
 
             Handler(Looper.getMainLooper()).post {
-                context.showReceivedMessageNotification(mms.id, address, mms.body, mms.threadId, glideBitmap)
+                if (!context.isNumberBlocked(address.normalizePhoneNumber())) {
+                    context.showReceivedMessageNotification(mms.id, address, mms.body, mms.threadId, glideBitmap)
+                }
                 val conversation = context.getConversations(mms.threadId).firstOrNull() ?: return@post
                 ensureBackgroundThread {
                     context.insertOrUpdateConversation(conversation)

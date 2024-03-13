@@ -176,6 +176,7 @@ class MainActivity : SimpleActivity() {
             when (menuItem.itemId) {
                 R.id.show_recycle_bin -> launchRecycleBin()
                 R.id.show_archived -> launchArchivedConversations()
+                R.id.show_blocked -> launchBlockedConversations()
                 R.id.settings -> launchSettings()
                 R.id.about -> launchAbout()
                 else -> return@setOnMenuItemClickListener false
@@ -317,9 +318,17 @@ class MainActivity : SimpleActivity() {
 
             conversations.forEach { clonedConversation ->
                 val threadIds = cachedConversations.map { it.threadId }
+                val blockedThreadIds = cachedConversations.filter { it.isBlocked }.map { it.threadId }
                 if (!threadIds.contains(clonedConversation.threadId)) {
                     conversationsDB.insertOrUpdate(clonedConversation)
                     cachedConversations.add(clonedConversation)
+                } else if (
+                    (clonedConversation.isBlocked && !blockedThreadIds.contains(clonedConversation.threadId))
+                    || (!clonedConversation.isBlocked && blockedThreadIds.contains(clonedConversation.threadId))
+                ) {
+                    conversationsDB.insertOrUpdate(clonedConversation)
+                    val currentIndex = cachedConversations.indexOfFirst { it.threadId == clonedConversation.threadId }
+                    cachedConversations[currentIndex] = clonedConversation
                 }
             }
 
@@ -568,6 +577,11 @@ class MainActivity : SimpleActivity() {
     private fun launchArchivedConversations() {
         hideKeyboard()
         startActivity(Intent(applicationContext, ArchivedConversationsActivity::class.java))
+    }
+
+    private fun launchBlockedConversations() {
+        hideKeyboard()
+        startActivity(Intent(applicationContext, BlockedConversationsActivity::class.java))
     }
 
     private fun launchSettings() {
